@@ -1,20 +1,29 @@
 name: Generate Lessons Index
-on: [push] # Tự chạy mỗi khi bạn đẩy bài mới lên
+on: 
+  push:
+    branches: [ main ]
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
       - name: Generate index.json
         run: |
-          # Quét các thư mục (loại bỏ folder bắt đầu bằng dấu chấm)
-          ls -d */ | cut -f1 -d'/' | grep -v '^\.' > folders.txt
-          # Chuyển danh sách thành định dạng JSON
+          # Tìm các thư mục, loại bỏ folder hệ thống và tạo file json
+          find . -maxdepth 1 -type d ! -name ".*" -printf '%P\n' | grep -v '^$' > folders.txt
           jq -R . folders.txt | jq -s . > index.json
+          echo "Generated index.json content:"
+          cat index.json
+
       - name: Commit and push changes
         run: |
-          git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github.com'
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add index.json
-          git commit -m "Auto-update index.json" || exit 0
-          git push
+          # Chỉ commit nếu có sự thay đổi
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update index.json" && git push)
